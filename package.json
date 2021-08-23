@@ -1,0 +1,15 @@
+{
+  "name": "perthite-2",
+  "version": "1.0.4",
+  "description": "Perthite2 is a simplified, lightweight JavaScript Templating Engine.",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "perthite",
+    "perthite2",
+    "Phillip Rekhotho"
+  ],
+  "author": "Phillip Rekhotho",
+  "license": "MIT"
+}
