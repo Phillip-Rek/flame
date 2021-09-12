@@ -3,12 +3,19 @@ import { Parser } from "./parser"
 import { Generator } from "./generator"
 import * as fs from "fs"
 
-let template: Function
 
-function render(srcCode: string, data: {}) {
-    if (template && process.env.NODE_ENV === "production") return template("", data)
+const templates: Map<string, Function> = new Map()
 
-    console.log("compiled")
+// let template: Function
+
+function render(filePath: string, srcCode: string, data: {}) {
+    if (templates.get(filePath) && process.env.NODE_ENV !== "development" && process.env.NODE_ENV !== "Development") {
+        //@ts-ignore
+        return templates.get(filePath)("", data)
+    }
+
+    console.log("compiled " + filePath)
+
     const lexer = new Lexer(srcCode)
     let tokens = lexer.tokens
 
@@ -19,13 +26,14 @@ function render(srcCode: string, data: {}) {
     let output = gen.output
 
     if (lexer.error.length || parser.errors.length || gen.errors.length) {
-        console.log(lexer.error)
-        console.log(parser.errors)
-        console.log(gen.errors)
+        console.error(lexer.error)
+        console.error(parser.errors)
+        console.error(gen.errors)
     }
 
-    template = new Function("template", "data", output)
-    return template("", data)
+    templates.set(filePath, new Function("template", "data", output))
+    //@ts-ignore
+    return templates.get(filePath)("", data)
 }
 
 export function engine(
@@ -35,7 +43,22 @@ export function engine(
 ) {
     fs.readFile(filePath, { encoding: "utf8" }, (err, content) => {
         if (err) return callback(err);
-        let res = render(content, data);
+        let res = render(filePath, content, data);
         return callback(null, res);
     });
+}
+
+
+export function compiler(srcCode: string, data: {}) {
+    const lexer = new Lexer(srcCode)
+    let tokens = lexer.tokens
+
+    const parser = new Parser(tokens)
+    let ast = parser.ast
+
+    const gen = new Generator(ast, data)
+    let output = gen.output
+
+    let template = new Function("template", "data", output)
+    return template("", data)
 }

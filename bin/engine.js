@@ -19,16 +19,18 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.engine = void 0;
+exports.compiler = exports.engine = void 0;
 const lexer_1 = require("./lexer");
 const parser_1 = require("./parser");
 const generator_1 = require("./generator");
 const fs = __importStar(require("fs"));
-let template;
-function render(srcCode, data) {
-    if (template && process.env.NODE_ENV === "production")
-        return template("", data);
-    console.log("compiled");
+const templates = new Map();
+// let template: Function
+function render(filePath, srcCode, data) {
+    if (templates.get(filePath) && process.env.NODE_ENV !== "development" && process.env.NODE_ENV !== "Development") {
+        return templates.get(filePath)("", data);
+    }
+    console.log("compiled " + filePath);
     const lexer = new lexer_1.Lexer(srcCode);
     let tokens = lexer.tokens;
     const parser = new parser_1.Parser(tokens);
@@ -36,19 +38,30 @@ function render(srcCode, data) {
     const gen = new generator_1.Generator(ast, data);
     let output = gen.output;
     if (lexer.error.length || parser.errors.length || gen.errors.length) {
-        console.log(lexer.error);
-        console.log(parser.errors);
-        console.log(gen.errors);
+        console.error(lexer.error);
+        console.error(parser.errors);
+        console.error(gen.errors);
     }
-    template = new Function("template", "data", output);
-    return template("", data);
+    templates.set(filePath, new Function("template", "data", output));
+    return templates.get(filePath)("", data);
 }
 function engine(filePath, data, callback) {
     fs.readFile(filePath, { encoding: "utf8" }, (err, content) => {
         if (err)
             return callback(err);
-        let res = render(content, data);
+        let res = render(filePath, content, data);
         return callback(null, res);
     });
 }
 exports.engine = engine;
+function compiler(srcCode, data) {
+    const lexer = new lexer_1.Lexer(srcCode);
+    let tokens = lexer.tokens;
+    const parser = new parser_1.Parser(tokens);
+    let ast = parser.ast;
+    const gen = new generator_1.Generator(ast, data);
+    let output = gen.output;
+    let template = new Function("template", "data", output);
+    return template("", data);
+}
+exports.compiler = compiler;
